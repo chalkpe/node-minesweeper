@@ -13,6 +13,8 @@ process.stdin.on('keypress', (ch, key) => {
     }
 
     if(!start()) switch(ch) {
+        case 'e': toggleFlag(cursor); break;
+
         case 'w': cursor.w(); break;
         case 'd': cursor.d(); break;
         case 's': cursor.s(); break;
@@ -23,8 +25,11 @@ process.stdin.on('keypress', (ch, key) => {
             case 'right': cursor.d(); break;
             case 'down':  cursor.s(); break;
             case 'left':  cursor.a(); break;
+            default: return;
         }
     }
+
+    print();
 });
 
 var cursor = {
@@ -58,13 +63,28 @@ var fields = Array.apply(null, Array(fieldWidth)).map(() => Array.apply(null, Ar
     flagged: false
 })));
 
-var newLine = () => process.stdout.write('\n');
-var write = (text, ln) => {
-    process.stdout.write(text);
-    if(ln) newLine();
+var toggleFlag = (x, y) => {
+    if(x && x.hasOwnProperty('x')){
+        y = x.y; x = x.x;
+    }
+
+    var field = fields[x][y];
+    field.flagged = !field.flagged;
+
+    print();
+};
+
+var buffer = '';
+
+var write = (text) => buffer += text;
+var flush = () => {
+    process.stdout.write(buffer);
+    buffer = '';
 };
 
 var clear = () => write('\033c');
+var newLine = () => write('\n');
+
 var repeat = (theChalk, text, count) => {
     for(var i = 0; i < count; i++) write(theChalk(text));
 };
@@ -106,7 +126,7 @@ var printTitle = (text, align) => {
             break;
     }
 
-    process.stdout.write('\n');
+    newLine();
 };
 
 var blankColor = (mineCount) => {
@@ -119,10 +139,14 @@ var blankColor = (mineCount) => {
 var getField = (x, y) => {
     var field = fields[x][y];
     var output = {
-        background: 'white', foreground: 'black', text: ' '
+        background: 'white', foreground: 'black', text: ' ', special: null
     };
 
-    if(field.flagged) output.background = 'magenta';
+    if(field.flagged){
+        output.text = 'X';
+        output.background = 'cyan';
+    }
+
     else switch(field.type){
         case FieldType.GROUND:
         case FieldType.MINE:
@@ -140,7 +164,11 @@ var getField = (x, y) => {
     }
 
     if(cursor.x === x && cursor.y === y) output.background = 'green';
-    return chalk['bg' + capitalize(output.background)][output.foreground](output.text);
+
+    var theChalk = chalk['bg' + capitalize(output.background)][output.foreground];
+    if(output.special) theChalk = theChalk[output.special];
+
+    return theChalk(output.text);
 };
 
 var print = () => {
@@ -155,11 +183,14 @@ var print = () => {
         write((y === cursor.y ? Border.SELECTION_COLOR : Border.COLOR)(Border.CENTER));
         for(var x = 0; x < fieldWidth; x++) write(getField(x, y));
         write((y === cursor.y ? Border.SELECTION_COLOR : Border.COLOR)(Border.CENTER));
+        newLine();
     }
 
-    repeat(Border.COLOR, Border.BOTTOM, cursor.x);
+    repeat(Border.COLOR, Border.BOTTOM, cursor.x + 1);
     write(Border.SELECTION_COLOR(Border.BOTTOM));
-    repeat(Border.COLOR, Border.BOTTOM, consoleWidth - cursor.x - 1);
+    repeat(Border.COLOR, Border.BOTTOM, consoleWidth - cursor.x - 2);
+
+    flush();
 };
 
 var start = () => {
@@ -171,9 +202,9 @@ var start = () => {
         for(var i = 0; i < mineCount; i++) fields[random(fieldWidth)][random(fieldHeight)].type = FieldType.MINE;
 
         setInterval(print, 500);
+        print();
         return true;
     };
 }();
 
-clear(); newLine();
-printTitle('Press any key to start...');
+clear(); newLine(); printTitle('Press any key to start...'); flush();
