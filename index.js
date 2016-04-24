@@ -53,7 +53,7 @@ var fieldHeight = consoleHeight() - 3;
 
 var fields = Array.apply(null, Array(fieldWidth)).map((v, x) => Array.apply(null, Array(fieldHeight)).map((v, y) => ({
     x: x, y: y,
-    type: FieldType.BLANK,
+    type: FieldType.GROUND,
     flagged: false
 })));
 
@@ -68,7 +68,7 @@ var cursor = {
 
 var status = {
     flagCount: 0,
-    mineCount: (fieldWidth * fieldHeight) / 2,
+    mineCount: Math.floor((fieldWidth * fieldHeight) / 10),
     mineInstalled: false,
 };
 
@@ -77,17 +77,27 @@ var vectorToField = (x, y) => {
         y = x.y; x = x.x;
     }
 
-    return fields[x][y] || null;
+    return (fields[x] && fields[x][y]) || null;
 };
 
 var toggleFlag = (x, y) => {
     var field = vectorToField(x, y); if(!field) return;
+    if(field.type === FieldType.BLANK) return;
+
     if(field.flagged = !field.flagged) status.flagCount++; else status.flagCount--;
     printAll();
 };
 
-var uncoverField = (x, y) => {
+var mineCount = (x, y) => {
     var field = vectorToField(x, y); if(!field) return;
+
+    var xx, yy, count = 0;
+    for(var i = -1; i <= 1; i++) for(var j = -1; j <= 1; j++) if((i !== 0 || j !== 0) && (xx = field.x + i) >= 0 && (yy = field.y + j) >= 0 && xx < fieldWidth && yy < fieldHeight && fields[xx][yy].type === FieldType.MINE) count++;
+    return count;
+};
+
+var uncoverField = (x, y) => {
+    var field = vectorToField(x, y); if(!field || field.flagged) return;
     if(!status.mineInstalled){
         status.mineInstalled = true;
 
@@ -95,7 +105,34 @@ var uncoverField = (x, y) => {
         randomVectorArray(status.mineCount, exception).forEach((vector) => fields[vector[0]][vector[1]].type = FieldType.MINE);
     }
 
+    switch(field.type){
+        case FieldType.MINE:
+            clearInterval(printer);
+            printAll('Game over!');
+            break;
+
+        case FieldType.GROUND:
+            field.type = FieldType.BLANK;
+
+            uncoverGround(field.x, field.y - 1); //w
+            uncoverGround(field.x + 1, field.y); //d
+            uncoverGround(field.x, field.y + 1); //s
+            uncoverGround(field.x - 1, field.y); //a
+            break;
+    }
 };
+
+var uncoverGround = (x, y) => {
+    var field = vectorToField(x, y); if(!field || field.type !== FieldType.GROUND) return;
+    if(mineCount(field) !== 0) return;
+
+    field.type = FieldType.BLANK;
+
+    uncoverGround(field.x, field.y - 1); //w
+    uncoverGround(field.x + 1, field.y); //d
+    uncoverGround(field.x, field.y + 1); //s
+    uncoverGround(field.x - 1, field.y); //a
+}
 
 var buffer = '';
 
@@ -166,10 +203,10 @@ var printTitle = (text, align) => {
     newLine();
 };
 
-var blankColor = (mineCount) => {
-    if(mineCount >= 7) return 'red';
-    if(mineCount >= 5) return 'blue';
-    if(mineCount >= 3) return 'yellow';
+var blankColor = (count) => {
+    if(count >= 7) return 'red';
+    if(count >= 5) return 'blue';
+    if(count >= 3) return 'yellow';
     else return 'black';
 };
 
@@ -192,9 +229,7 @@ var getFieldString = (x, y) => {
             break;
 
         case FieldType.BLANK:
-            var xx, yy, count = 0;
-            for(var i = -1; i <= 1; i++) for(var j = -1; j <= 1; j++) if((i !== 0 || j !== 0) && (xx = x + i) >= 0 && (yy = y + j) >= 0 && xx < fieldWidth && yy < fieldHeight && fields[xx][yy].type === FieldType.MINE) count++;
-
+            var count = mineCount(x, y);
             output.foreground = blankColor(count);
             if(count > 0) output.text = Math.min(count, 9).toString(10);
             break;
@@ -234,11 +269,13 @@ var printAll = (title) => {
     flush();
 };
 
+var printer = null;
+
 var start = () => {
     var done = false;
     return () => {
         if(done) return true; done = true;
-        printAll(); setInterval(printAll, 500); return false;
+        printAll(); printer = setInterval(printAll, 500); return false;
     };
 }();
 
