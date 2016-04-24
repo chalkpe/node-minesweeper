@@ -12,7 +12,7 @@ process.stdin.on('keypress', (ch, key) => {
         process.exit(1);
     }
 
-    if(start() && printer !== 'game over') switch(ch){
+    if(game.status <= Status.READY) start(); else if(game.status === Status.STARTED) switch(ch){
         case 'e': toggleFlag(cursor); break;
         case 'q': uncoverField(cursor); break;
 
@@ -66,7 +66,17 @@ var cursor = {
     a: () => cursor.x = Math.max(0, cursor.x - 1)
 };
 
-var status = {
+const Status = {
+    READY: 0,
+    STARTED: 1,
+    FAILED: 2,
+    SUCCEEDED: 3
+};
+
+var game = {
+    status: Status.READY,
+    startedTime: null,
+
     flagCount: 0,
     mineCount: Math.floor((fieldWidth * fieldHeight) / 20),
     mineInstalled: false,
@@ -84,7 +94,7 @@ var toggleFlag = (x, y) => {
     var field = vectorToField(x, y); if(!field) return;
     if(field.type === FieldType.BLANK) return;
 
-    if(field.flagged = !field.flagged) status.flagCount++; else status.flagCount--;
+    if(field.flagged = !field.flagged) game.flagCount++; else game.flagCount--;
     printAll();
 };
 
@@ -98,16 +108,17 @@ var mineCount = (x, y) => {
 
 var uncoverField = (x, y) => {
     var field = vectorToField(x, y); if(!field || field.flagged) return;
-    if(!status.mineInstalled){
-        status.mineInstalled = true;
+    if(!game.mineInstalled){
+        game.mineInstalled = true;
 
         var exception = {}; exception[field.x + ':' + field.y] = true;
-        randomVectorArray(status.mineCount, exception).forEach((vector) => fields[vector[0]][vector[1]].type = FieldType.MINE);
+        randomVectorArray(game.mineCount, exception).forEach((vector) => fields[vector[0]][vector[1]].type = FieldType.MINE);
     }
 
     switch(field.type){
         case FieldType.MINE:
-            clearInterval(printer); printer = 'game over';
+            game.status = Status.FAILED;
+            setTimeout(() => process.exit(0), 3000);
             break;
 
         case FieldType.GROUND:
@@ -118,6 +129,8 @@ var uncoverField = (x, y) => {
             uncoverGround(field.x, field.y + 1); //s
             uncoverGround(field.x - 1, field.y); //a
             break;
+
+        default: return;
     }
 };
 
@@ -251,13 +264,15 @@ var getFieldString = (x, y) => {
     return theChalk(output.text);
 };
 
+var getElapsedTime = () => moment.utc(moment().diff(game.startedTime)).format("HH:mm:ss");
+
 var printAll = (title) => {
     clear();
     var marginTop = Math.round((consoleHeight() - fieldHeight - 3) / 2);
     var marginLeft = Math.round((consoleWidth() - fieldWidth - 2) / 2);
 
     repeat(null, '\n', marginTop);
-    printTitle((printer === 'game over' && "Game over!") || title || (moment().format('HH:mm:ss') + ' | ' + status.flagCount + '/' + status.mineCount + ' | (' + cursor.x + ', ' + cursor.y + ')'));
+    printTitle((game.status === Status.FAILED && 'Game over!') || title || (getElapsedTime() + ' | ' + game.flagCount + '/' + game.mineCount + ' | (' + cursor.x + ', ' + cursor.y + ')'));
 
     repeat(null, ' ', marginLeft);
     repeat(Border.COLOR, Border.TOP, cursor.x + 1);
@@ -280,12 +295,12 @@ var printAll = (title) => {
 var printer = null;
 
 var start = () => {
-    var done = false;
-    return () => {
-        if(done) return true; done = true;
-        printer = setInterval(printAll, 200); printAll();
-        return false;
-    };
-}();
+    if(game.status > Status.READY) return;
+
+    game.status = Status.STARTED;
+    game.startedTime = moment();
+
+    printAll(); printer = setInterval(printAll, 200);
+};
 
 printAll("Press any key to start...");
