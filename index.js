@@ -29,7 +29,7 @@ process.stdin.on('keypress', (ch, key) => {
         }
     }
 
-    print();
+    printAll();
 });
 
 var cursor = {
@@ -59,7 +59,7 @@ var fieldWidth = consoleWidth - 2;
 var fieldHeight = consoleHeight - 3;
 
 var fields = Array.apply(null, Array(fieldWidth)).map(() => Array.apply(null, Array(fieldHeight)).map(() => ({
-    type: FieldType.BLANK,
+    type: FieldType.GROUND,
     flagged: false
 })));
 
@@ -71,7 +71,7 @@ var toggleFlag = (x, y) => {
     var field = fields[x][y];
     field.flagged = !field.flagged;
 
-    print();
+    printAll();
 };
 
 var buffer = '';
@@ -136,7 +136,7 @@ var blankColor = (mineCount) => {
     else return 'black';
 };
 
-var getField = (x, y) => {
+var getFieldString = (x, y) => {
     var field = fields[x][y];
     var output = {
         background: 'white', foreground: 'black', text: ' ', special: null
@@ -171,7 +171,7 @@ var getField = (x, y) => {
     return theChalk(output.text);
 };
 
-var print = () => {
+var printAll = () => {
     clear();
     printTitle(moment().toString());
 
@@ -180,10 +180,8 @@ var print = () => {
     repeat(Border.COLOR, Border.TOP, consoleWidth - cursor.x - 2);
 
     for(var y = 0; y < fieldHeight; y++){
-        write((y === cursor.y ? Border.SELECTION_COLOR : Border.COLOR)(Border.CENTER));
-        for(var x = 0; x < fieldWidth; x++) write(getField(x, y));
-        write((y === cursor.y ? Border.SELECTION_COLOR : Border.COLOR)(Border.CENTER));
-        newLine();
+        var border = (y === cursor.y ? Border.SELECTION_COLOR : Border.COLOR)(Border.CENTER);
+        write(border); for(var x = 0; x < fieldWidth; x++) write(getFieldString(x, y)); write(border); newLine();
     }
 
     repeat(Border.COLOR, Border.BOTTOM, cursor.x + 1);
@@ -201,8 +199,8 @@ var start = () => {
         var mineCount = (fieldWidth * fieldHeight) / 2;
         for(var i = 0; i < mineCount; i++) fields[random(fieldWidth)][random(fieldHeight)].type = FieldType.MINE;
 
-        setInterval(print, 500);
-        print();
+        setInterval(printAll, 500);
+        printAll();
         return true;
     };
 }();
