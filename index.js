@@ -12,7 +12,7 @@ process.stdin.on('keypress', (ch, key) => {
         process.exit(1);
     }
 
-    if(start()) switch(ch){
+    if(start() && printer !== 'game over') switch(ch){
         case 'e': toggleFlag(cursor); break;
         case 'q': uncoverField(cursor); break;
 
@@ -48,8 +48,8 @@ const Border = {
 var consoleWidth = () => process.stdout.columns;
 var consoleHeight = () => process.stdout.rows;
 
-var fieldWidth = consoleWidth() - 2;
-var fieldHeight = consoleHeight() - 3;
+var fieldWidth = Math.min(2048, consoleWidth() - 2);
+var fieldHeight = Math.min(2048, consoleHeight() - 3);
 
 var fields = Array.apply(null, Array(fieldWidth)).map((v, x) => Array.apply(null, Array(fieldHeight)).map((v, y) => ({
     x: x, y: y,
@@ -68,7 +68,7 @@ var cursor = {
 
 var status = {
     flagCount: 0,
-    mineCount: Math.floor((fieldWidth * fieldHeight) / 10),
+    mineCount: Math.floor((fieldWidth * fieldHeight) / 20),
     mineInstalled: false,
 };
 
@@ -107,8 +107,7 @@ var uncoverField = (x, y) => {
 
     switch(field.type){
         case FieldType.MINE:
-            clearInterval(printer);
-            printAll('Game over!');
+            clearInterval(printer); printer = 'game over';
             break;
 
         case FieldType.GROUND:
@@ -123,16 +122,25 @@ var uncoverField = (x, y) => {
 };
 
 var uncoverGround = (x, y) => {
-    var field = vectorToField(x, y); if(!field || field.type !== FieldType.GROUND) return;
-    if(mineCount(field) !== 0) return;
+    var queue = [vectorToField(x, y)];
+    var check = {};
 
-    field.type = FieldType.BLANK;
+    while(queue.length > 0){
+        var field = queue.shift();
+        if(!field || field.type !== FieldType.GROUND) continue;
 
-    uncoverGround(field.x, field.y - 1); //w
-    uncoverGround(field.x + 1, field.y); //d
-    uncoverGround(field.x, field.y + 1); //s
-    uncoverGround(field.x - 1, field.y); //a
-}
+        var key = field.x + ':' + field.y;
+        if(check[key]) continue; check[key] = true;
+
+        if(mineCount(field) !== 0) continue;
+        field.type = FieldType.BLANK;
+
+        queue.push(vectorToField(field.x, field.y - 1)); //w
+        queue.push(vectorToField(field.x + 1, field.y)); //d
+        queue.push(vectorToField(field.x, field.y + 1)); //s
+        queue.push(vectorToField(field.x - 1, field.y)); //a
+    }
+};
 
 var buffer = '';
 
@@ -249,7 +257,7 @@ var printAll = (title) => {
     var marginLeft = Math.round((consoleWidth() - fieldWidth - 2) / 2);
 
     repeat(null, '\n', marginTop);
-    printTitle(title || (moment().format('HH:mm:ss') + ' | ' + status.flagCount + '/' + status.mineCount + ' | (' + cursor.x + ', ' + cursor.y + ')'));
+    printTitle((printer === 'game over' && "Game over!") || title || (moment().format('HH:mm:ss') + ' | ' + status.flagCount + '/' + status.mineCount + ' | (' + cursor.x + ', ' + cursor.y + ')'));
 
     repeat(null, ' ', marginLeft);
     repeat(Border.COLOR, Border.TOP, cursor.x + 1);
@@ -275,7 +283,8 @@ var start = () => {
     var done = false;
     return () => {
         if(done) return true; done = true;
-        printAll(); printer = setInterval(printAll, 500); return false;
+        printer = setInterval(printAll, 200); printAll();
+        return false;
     };
 }();
 
