@@ -109,7 +109,7 @@ var clear = () => write('\033c');
 var newLine = () => write('\n');
 
 var repeat = (theChalk, text, count) => {
-    for(var i = 0; i < count; i++) write(theChalk(text));
+    for(var i = 0; i < count; i++) theChalk ? write(theChalk(text)) : write(text);
 };
 
 var capitalize = (str) => str && str.charAt(0).toUpperCase() + str.slice(1);
@@ -210,21 +210,26 @@ var getFieldString = (x, y) => {
 
 var printAll = (title) => {
     clear();
+    var marginTop = Math.round((consoleHeight() - fieldHeight - 3) / 2);
+    var marginLeft = Math.round((consoleWidth() - fieldWidth - 2) / 2);
+
+    repeat(null, '\n', marginTop);
     printTitle(title || (moment().format('HH:mm:ss') + ' | ' + status.flagCount + '/' + status.mineCount + ' | (' + cursor.x + ', ' + cursor.y + ')'));
 
+    repeat(null, ' ', marginLeft);
     repeat(Border.COLOR, Border.TOP, cursor.x + 1);
     write(Border.SELECTION_COLOR(Border.TOP));
-    repeat(Border.COLOR, Border.TOP, consoleWidth() - cursor.x - 2);
+    repeat(Border.COLOR, Border.TOP, fieldWidth - cursor.x);
     newLine();
 
     for(var y = 0; y < fieldHeight; y++){
         var border = (y === cursor.y ? Border.SELECTION_COLOR : Border.COLOR)(Border.CENTER);
-        write(border); for(var x = 0; x < fieldWidth; x++) write(getFieldString(x, y)); write(border); newLine();
+        repeat(null, ' ', marginLeft); write(border); for(var x = 0; x < fieldWidth; x++) write(getFieldString(x, y)); write(border); newLine();
     }
 
-    repeat(Border.COLOR, Border.BOTTOM, cursor.x + 1);
+    repeat(null, ' ', marginLeft); repeat(Border.COLOR, Border.BOTTOM, cursor.x + 1);
     write(Border.SELECTION_COLOR(Border.BOTTOM));
-    repeat(Border.COLOR, Border.BOTTOM, consoleWidth() - cursor.x - 2);
+    repeat(Border.COLOR, Border.BOTTOM, fieldWidth - cursor.x);
 
     flush();
 };
