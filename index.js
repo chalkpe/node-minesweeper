@@ -12,8 +12,9 @@ process.stdin.on('keypress', (ch, key) => {
         process.exit(1);
     }
 
-    if(!start()) switch(ch) {
+    if(start()) switch(ch){
         case 'e': toggleFlag(cursor); break;
+        case 'q': uncoverField(cursor); break;
 
         case 'w': cursor.w(); break;
         case 'd': cursor.d(); break;
@@ -32,14 +33,6 @@ process.stdin.on('keypress', (ch, key) => {
     printAll();
 });
 
-var cursor = {
-    x: 0, y: 0,
-    w: () => cursor.y = Math.max(0, cursor.y - 1),
-    d: () => cursor.x = Math.min(fieldWidth - 1, cursor.x + 1),
-    s: () => cursor.y = Math.min(fieldHeight - 1, cursor.y + 1),
-    a: () => cursor.x = Math.max(0, cursor.x - 1)
-};
-
 const FieldType = {
     GROUND: 0,
     BLANK: 1,
@@ -52,26 +45,56 @@ const Border = {
     SELECTION_COLOR: chalk.yellow.bold
 };
 
-var consoleWidth = process.stdout.columns;
-var consoleHeight = process.stdout.rows;
+var consoleWidth = () => process.stdout.columns;
+var consoleHeight = () => process.stdout.rows;
 
-var fieldWidth = consoleWidth - 2;
-var fieldHeight = consoleHeight - 3;
+var fieldWidth = consoleWidth() - 2;
+var fieldHeight = consoleHeight() - 3;
 
-var fields = Array.apply(null, Array(fieldWidth)).map(() => Array.apply(null, Array(fieldHeight)).map(() => ({
-    type: FieldType.GROUND,
+var fields = Array.apply(null, Array(fieldWidth)).map((v, x) => Array.apply(null, Array(fieldHeight)).map((v, y) => ({
+    x: x, y: y,
+    type: FieldType.BLANK,
     flagged: false
 })));
 
-var toggleFlag = (x, y) => {
+var cursor = {
+    x: Math.floor(fieldWidth / 2),
+    y: Math.floor(fieldHeight / 2),
+    w: () => cursor.y = Math.max(0, cursor.y - 1),
+    d: () => cursor.x = Math.min(fieldWidth - 1, cursor.x + 1),
+    s: () => cursor.y = Math.min(fieldHeight - 1, cursor.y + 1),
+    a: () => cursor.x = Math.max(0, cursor.x - 1)
+};
+
+var status = {
+    flagCount: 0,
+    mineCount: (fieldWidth * fieldHeight) / 2,
+    mineInstalled: false,
+};
+
+var vectorToField = (x, y) => {
     if(x && x.hasOwnProperty('x')){
         y = x.y; x = x.x;
     }
 
-    var field = fields[x][y];
-    field.flagged = !field.flagged;
+    return fields[x][y] || null;
+};
 
+var toggleFlag = (x, y) => {
+    var field = vectorToField(x, y); if(!field) return;
+    if(field.flagged = !field.flagged) status.flagCount++; else status.flagCount--;
     printAll();
+};
+
+var uncoverField = (x, y) => {
+    var field = vectorToField(x, y); if(!field) return;
+    if(!status.mineInstalled){
+        status.mineInstalled = true;
+
+        var exception = {}; exception[field.x + ':' + field.y] = true;
+        randomVectorArray(status.mineCount, exception).forEach((vector) => fields[vector[0]][vector[1]].type = FieldType.MINE);
+    }
+
 };
 
 var buffer = '';
@@ -99,12 +122,26 @@ var random = (min, max) => {
     return min + Math.floor(Math.random() * (max - min));
 };
 
+var randomVectorArray = (count, exception) => {
+    var check = {};
+    var vectors = [];
+
+    while(vectors.length < count){
+        var vector = [random(fieldWidth), random(fieldHeight)]; var key = vector.join(':');
+        if(!check[key] && !exception[key]){
+            check[key] = true;
+            vectors.push(vector);
+        }
+    }
+    return vectors;
+};
+
 const Title = {
     COLOR: chalk.yellow.bold
 };
 
 var printTitle = (text, align) => {
-    var spaces = consoleWidth - text.length;
+    var spaces = consoleWidth() - text.length;
 
     switch(align){
         case 'left':
@@ -171,13 +208,14 @@ var getFieldString = (x, y) => {
     return theChalk(output.text);
 };
 
-var printAll = () => {
+var printAll = (title) => {
     clear();
-    printTitle(moment().toString());
+    printTitle(title || (moment().format('HH:mm:ss') + ' | ' + status.flagCount + '/' + status.mineCount + ' | (' + cursor.x + ', ' + cursor.y + ')'));
 
     repeat(Border.COLOR, Border.TOP, cursor.x + 1);
     write(Border.SELECTION_COLOR(Border.TOP));
-    repeat(Border.COLOR, Border.TOP, consoleWidth - cursor.x - 2);
+    repeat(Border.COLOR, Border.TOP, consoleWidth() - cursor.x - 2);
+    newLine();
 
     for(var y = 0; y < fieldHeight; y++){
         var border = (y === cursor.y ? Border.SELECTION_COLOR : Border.COLOR)(Border.CENTER);
@@ -186,7 +224,7 @@ var printAll = () => {
 
     repeat(Border.COLOR, Border.BOTTOM, cursor.x + 1);
     write(Border.SELECTION_COLOR(Border.BOTTOM));
-    repeat(Border.COLOR, Border.BOTTOM, consoleWidth - cursor.x - 2);
+    repeat(Border.COLOR, Border.BOTTOM, consoleWidth() - cursor.x - 2);
 
     flush();
 };
@@ -194,15 +232,9 @@ var printAll = () => {
 var start = () => {
     var done = false;
     return () => {
-        if(done) return false; done = true;
-
-        var mineCount = (fieldWidth * fieldHeight) / 2;
-        for(var i = 0; i < mineCount; i++) fields[random(fieldWidth)][random(fieldHeight)].type = FieldType.MINE;
-
-        setInterval(printAll, 500);
-        printAll();
-        return true;
+        if(done) return true; done = true;
+        printAll(); setInterval(printAll, 500); return false;
     };
 }();
 
-clear(); newLine(); printTitle('Press any key to start...'); flush();
+printAll("Press any key to start...");
