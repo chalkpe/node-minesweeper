@@ -57,6 +57,8 @@ var fields = Array.apply(null, Array(fieldWidth)).map((v, x) => Array.apply(null
     flagged: false
 })));
 
+var flatFields = () => fields.reduce((a, b) => a.concat(b));
+
 var cursor = {
     x: Math.floor(fieldWidth / 2),
     y: Math.floor(fieldHeight / 2),
@@ -95,6 +97,8 @@ var toggleFlag = (x, y) => {
     if(field.type === FieldType.BLANK) return;
 
     if(field.flagged = !field.flagged) game.flagCount++; else game.flagCount--;
+    if(game.flagCount === game.mineCount && flatFields().filter(field => field.flagged).every(field => field.type === FieldType.MINE)) game.status = Status.SUCCEEDED;
+
     printAll();
 };
 
@@ -272,7 +276,7 @@ var printAll = (title) => {
     var marginLeft = Math.round((consoleWidth() - fieldWidth - 2) / 2);
 
     repeat(null, '\n', marginTop);
-    printTitle((game.status === Status.FAILED && 'Game over!') || title || (getElapsedTime() + ' | ' + game.flagCount + '/' + game.mineCount + ' | (' + cursor.x + ', ' + cursor.y + ')'));
+    printTitle((game.status === Status.FAILED && 'Failed!') || (game.status === Status.SUCCEEDED && 'Succeeded!') || title || (getElapsedTime() + ' | ' + game.flagCount + '/' + game.mineCount + ' | (' + cursor.x + ', ' + cursor.y + ')'));
 
     repeat(null, ' ', marginLeft);
     repeat(Border.COLOR, Border.TOP, cursor.x + 1);
