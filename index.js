@@ -262,6 +262,14 @@ var getFieldString = (x, y) => {
 
     if(cursor.x === x && cursor.y === y) output.background = 'green';
 
+    if(game.status > Status.STARTED && field.type === FieldType.MINE){
+        output.text = '!';
+        output.foreground = 'white';
+        output.special = 'bold';
+
+        if(!field.flagged) output.background = 'red';
+    }
+
     var theChalk = chalk['bg' + capitalize(output.background)][output.foreground];
     if(output.special) theChalk = theChalk[output.special];
 
