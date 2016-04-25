@@ -81,7 +81,7 @@ var game = {
     finishedTime: null,
 
     flagCount: 0,
-    mineCount: Math.floor((fieldWidth * fieldHeight) / 25),
+    mineCount: Math.floor((fieldWidth * fieldHeight) / 100 * Math.min(95, parseFloat(process.argv[2]) || 15)),
     mineInstalled: false,
 };
 
