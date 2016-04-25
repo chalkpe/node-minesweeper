@@ -78,9 +78,10 @@ const Status = {
 var game = {
     status: Status.READY,
     startedTime: null,
+    finishedTime: null,
 
     flagCount: 0,
-    mineCount: Math.floor((fieldWidth * fieldHeight) / 20),
+    mineCount: Math.floor((fieldWidth * fieldHeight) / 25),
     mineInstalled: false,
 };
 
@@ -97,7 +98,7 @@ var toggleFlag = (x, y) => {
     if(field.type === FieldType.BLANK) return;
 
     if(field.flagged = !field.flagged) game.flagCount++; else game.flagCount--;
-    if(game.flagCount === game.mineCount && flatFields().filter(field => field.flagged).every(field => field.type === FieldType.MINE)) game.status = Status.SUCCEEDED;
+    if(game.flagCount === game.mineCount && flatFields().filter(field => field.flagged).every(field => field.type === FieldType.MINE)) return finish(true);
 
     printAll();
 };
@@ -121,8 +122,7 @@ var uncoverField = (x, y) => {
 
     switch(field.type){
         case FieldType.MINE:
-            game.status = Status.FAILED;
-            setTimeout(() => process.exit(0), 3000);
+            finish(false);
             break;
 
         case FieldType.GROUND:
@@ -268,7 +268,7 @@ var getFieldString = (x, y) => {
     return theChalk(output.text);
 };
 
-var getElapsedTime = () => moment.utc(moment().diff(game.startedTime)).format("HH:mm:ss");
+var getElapsedTime = (now) => moment.utc((now || moment()).diff(game.startedTime)).format("HH:mm:ss");
 
 var printAll = (title) => {
     clear();
@@ -276,7 +276,26 @@ var printAll = (title) => {
     var marginLeft = Math.round((consoleWidth() - fieldWidth - 2) / 2);
 
     repeat(null, '\n', marginTop);
-    printTitle((game.status === Status.FAILED && 'Failed!') || (game.status === Status.SUCCEEDED && 'Succeeded!') || title || (getElapsedTime() + ' | ' + game.flagCount + '/' + game.mineCount + ' | (' + cursor.x + ', ' + cursor.y + ')'));
+
+    switch(game.status){
+        case Status.READY:
+            printTitle("Press any key to start...");
+            break;
+
+        case Status.STARTED:
+            var title = getElapsedTime() + ' | ' + game.flagCount + '/' + game.mineCount;
+            var cursorText = ' | (' + cursor.x + ', ' + cursor.y + ')';
+            printTitle((title.length + cursorText.length) < consoleWidth() ? title + cursorText : title);
+            break;
+
+        case Status.FAILED:
+            printTitle(getElapsedTime(game.finishedTime) + " | Failed");
+            break;
+
+        case Status.SUCCEEDED:
+            printTitle(getElapsedTime(game.finishedTime) + " | Succeeded");
+            break;
+    }
 
     repeat(null, ' ', marginLeft);
     repeat(Border.COLOR, Border.TOP, cursor.x + 1);
@@ -304,7 +323,18 @@ var start = () => {
     game.status = Status.STARTED;
     game.startedTime = moment();
 
-    printAll(); printer = setInterval(printAll, 200);
+    printAll();
 };
 
-printAll("Press any key to start...");
+var finish = (succeeded) => {
+    if(game.status > Status.STARTED) return;
+
+    game.status = succeeded ? Status.SUCCEEDED : Status.FAILED;
+    game.finishedTime = moment();
+
+    printAll();
+    setTimeout(() => process.exit(0), 3000);
+};
+
+game.status = Status.READY; printAll();
+printer = setInterval(printAll, 200);
