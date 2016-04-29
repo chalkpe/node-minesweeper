@@ -8,6 +8,7 @@ process.stdin.resume();
 
 process.stdin.on('keypress', (ch, key) => {
     if(key && key.ctrl && key.name === 'c'){
+        clear(); flush();
         process.stdin.pause();
         process.exit(1);
     }
@@ -169,6 +170,7 @@ var flush = () => {
 
 var clear = () => write('\033c');
 var newLine = () => write('\n');
+var moveCursor = (n, m) => write('\033[' + [n, m].map(i => i || '1').join(';') + 'H');
 
 var repeat = (theChalk, text, count) => {
     for(var i = 0; i < count; i++) theChalk ? write(theChalk(text)) : write(text);
@@ -279,7 +281,8 @@ var getFieldString = (x, y) => {
 var getElapsedTime = (now) => moment.utc((now || moment()).diff(game.startedTime)).format("HH:mm:ss");
 
 var printAll = (title) => {
-    clear();
+    moveCursor();
+
     var marginTop = Math.round((consoleHeight() - fieldHeight - 3) / 2);
     var marginLeft = Math.round((consoleWidth() - fieldWidth - 2) / 2);
 
@@ -341,8 +344,11 @@ var finish = (succeeded) => {
     game.finishedTime = moment();
 
     printAll();
-    setTimeout(() => process.exit(0), 3000);
+    setTimeout(() => {
+        newLine(); flush();
+        process.exit(0);
+    }, 3000);
 };
 
-game.status = Status.READY; printAll();
+game.status = Status.READY; clear(); printAll();
 printer = setInterval(printAll, 200);
