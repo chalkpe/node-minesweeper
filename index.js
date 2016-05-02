@@ -34,6 +34,10 @@ process.stdin.on('keypress', (ch, key) => {
     printAll();
 });
 
+process.stdout.on('resize', () => {
+    clear(); printAll();
+});
+
 const FieldType = {
     GROUND: 0,
     BLANK: 1,
@@ -300,11 +304,11 @@ var printAll = (title) => {
             break;
 
         case Status.FAILED:
-            printTitle(getElapsedTime(game.finishedTime) + " | Failed");
+            printTitle(getElapsedTime(game.finishedTime) + ' | ' + game.mineCount + " | Failed");
             break;
 
         case Status.SUCCEEDED:
-            printTitle(getElapsedTime(game.finishedTime) + " | Succeeded");
+            printTitle(getElapsedTime(game.finishedTime) + ' | ' + game.mineCount + " | Succeeded");
             break;
     }
 
