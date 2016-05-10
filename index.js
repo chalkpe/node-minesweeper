@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+var argv = require('yargs').argv;
 var chalk = require('chalk');
 var moment = require('moment');
 var keypress = require('keypress');
@@ -50,11 +52,13 @@ const Border = {
     SELECTION_COLOR: chalk.yellow.bold
 };
 
+var isNumeric = (x) => !isNaN(parseFloat(x)) && isFinite(x);
+
 var consoleWidth = () => process.stdout.columns;
 var consoleHeight = () => process.stdout.rows;
 
-var fieldWidth = Math.min(2048, consoleWidth() - 2);
-var fieldHeight = Math.min(2048, consoleHeight() - 3);
+var fieldWidth = Math.min(2048, isNumeric(argv.x) ? parseFloat(argv.x) : consoleWidth() - 2);
+var fieldHeight = Math.min(2048, isNumeric(argv.y) ? parseFloat(argv.y) : consoleHeight() - 3);
 
 var fields = Array.apply(null, Array(fieldWidth)).map((v, x) => Array.apply(null, Array(fieldHeight)).map((v, y) => ({
     x: x, y: y,
@@ -86,7 +90,7 @@ var game = {
     finishedTime: null,
 
     flagCount: 0,
-    mineCount: Math.floor((fieldWidth * fieldHeight) / 100 * Math.min(95, parseFloat(process.argv[2]) || 15)),
+    mineCount: Math.floor((fieldWidth * fieldHeight) / 100 * Math.min(50, isNumeric(argv._[0]) ? parseFloat(argv._[0]) : 15)),
     mineInstalled: false,
 };
 
