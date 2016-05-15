@@ -302,7 +302,7 @@ var getElapsedTime = (now) => moment.utc((now || moment()).diff(game.startedTime
 var printAll = (title) => {
     moveCursor();
 
-    var marginTop = Math.round((consoleHeight() - fieldHeight - 3) / 2);
+    var marginTop = Math.floor((consoleHeight() - fieldHeight - 3) / 2);
     var marginLeft = Math.round((consoleWidth() - fieldWidth - 2) / 2);
 
     repeat(null, '\n', marginTop);
