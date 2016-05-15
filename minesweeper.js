@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 var argv = require('yargs').argv;
 var chalk = require('chalk');
 var moment = require('moment');
@@ -112,11 +113,17 @@ var toggleFlag = (x, y) => {
     printAll();
 };
 
+var walkAround = (field, callback) => {
+    var xx, yy; for(var i = -1; i <= 1; i++) for(var j = -1; j <= 1; j++) if((i || j) && (xx = field.x + i) >= 0 && (yy = field.y + j) >= 0 && xx < fieldWidth && yy < fieldHeight && callback(fields[xx][yy])) return;
+};
+
 var mineCount = (x, y) => {
     var field = vectorToField(x, y); if(!field) return;
 
-    var xx, yy, count = 0;
-    for(var i = -1; i <= 1; i++) for(var j = -1; j <= 1; j++) if((i !== 0 || j !== 0) && (xx = field.x + i) >= 0 && (yy = field.y + j) >= 0 && xx < fieldWidth && yy < fieldHeight && fields[xx][yy].type === FieldType.MINE) count++;
+    var count = 0; walkAround(field, (f) => {
+        if(f.type === FieldType.MINE) count++;
+    });
+
     return count;
 };
 
@@ -149,7 +156,7 @@ var uncoverField = (x, y) => {
 
 var uncoverGround = (x, y) => {
     var queue = [vectorToField(x, y)];
-    var check = {};
+    var check = {}, blanks = [];
 
     while(queue.length > 0){
         var field = queue.shift();
@@ -159,13 +166,17 @@ var uncoverGround = (x, y) => {
         if(check[key]) continue; check[key] = true;
 
         if(mineCount(field) !== 0) continue;
-        field.type = FieldType.BLANK;
+        field.type = FieldType.BLANK; blanks.push(field);
 
         queue.push(vectorToField(field.x, field.y - 1)); //w
         queue.push(vectorToField(field.x + 1, field.y)); //d
         queue.push(vectorToField(field.x, field.y + 1)); //s
         queue.push(vectorToField(field.x - 1, field.y)); //a
     }
+
+    blanks.forEach((field) => walkAround(field, (f) => {
+        if(f.type === FieldType.GROUND) f.type = FieldType.BLANK;
+    }));
 };
 
 var buffer = '';
