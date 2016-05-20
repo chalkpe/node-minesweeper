@@ -10,7 +10,7 @@ process.stdin.setRawMode(true);
 process.stdin.resume();
 
 process.stdin.on('keypress', (ch, key) => {
-    if(key && key.ctrl && key.name === 'c'){
+    if(key && key.ctrl && 'z x c'.indexOf(key.name) >= 0){
         clear(); flush();
         process.stdin.pause();
         process.exit(1);
@@ -58,8 +58,15 @@ var isNumeric = (x) => !isNaN(parseFloat(x)) && isFinite(x);
 var consoleWidth = () => process.stdout.columns;
 var consoleHeight = () => process.stdout.rows;
 
-var fieldWidth = Math.min(2048, isNumeric(argv.x) ? parseFloat(argv.x) : consoleWidth() - 2);
-var fieldHeight = Math.min(2048, isNumeric(argv.y) ? parseFloat(argv.y) : consoleHeight() - 3);
+var givenWidth, givenHeight; ((size) => {
+    if(!size) return; size = size.split(':');
+    givenWidth = size[0]; givenHeight = size[1];
+})(argv.s || argv.size);
+
+var parseSize = (val, def) => Math.max(15, Math.min(2048, isNumeric(val) ? parseFloat(val) : def));
+
+var fieldWidth = parseSize(givenWidth || argv.x, consoleWidth() - 2);
+var fieldHeight = parseSize(givenHeight || argv.y, consoleHeight() - 3);
 
 var fields = Array.apply(null, Array(fieldWidth)).map((v, x) => Array.apply(null, Array(fieldHeight)).map((v, y) => ({
     x: x, y: y,
