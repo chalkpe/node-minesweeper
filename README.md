@@ -1,6 +1,8 @@
 # node-minesweeper
 Node.js powered terminal minesweeper
 
+![Screenshot](screenshot.png)
+
 ## How to run
 ```bash
 $ git clone https://github.com/ChalkPE/node-minesweeper.git
